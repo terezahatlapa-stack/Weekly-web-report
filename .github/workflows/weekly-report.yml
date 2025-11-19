@@ -29,6 +29,6 @@ jobs:
         run: |
           git config --local user.email "actions@github.com"
           git config --local user.name "GitHub Actions"
-          git add data/metrics.csv reports/
-          git commit -m "Týdenní report $(date '+%d.%m.%Y')"
-          git push
+          git add -A
+          git commit -m "Týdenní report $(date '+%d.%m.%Y')" || echo "No changes to commit"
+          git push || echo "Nothing to push"
