@@ -1,34 +1,35 @@
 name: Týdenní report webu
 
 on:
+  workflow_dispatch:
   schedule:
-    - cron: "0 7 * * 1"  # Každé pondělí v 7:00 UTC (~8:00 ráno našeho času)
-  workflow_dispatch:       # Možnost spustit ručně přes tlačítko
+    - cron: "0 7 * * MON"  # Každé pondělí v 7:00
 
 jobs:
   generate-report:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout repozitáře
-        uses: actions/checkout@v4
+      - name: Checkout repository
+        uses: actions/checkout@v3
 
-      - name: Nastavit Python
-        uses: actions/setup-python@v5
+      - name: Set up Python
+        uses: actions/setup-python@v4
         with:
-          python-version: "3.11"
+          python-version: "3.x"
 
-      - name: Nainstalovat závislosti
+      - name: Install dependencies
         run: |
-          pip install requests beautifulsoup4 lxml readability-lxml
+          pip install requests beautifulsoup4 lxml
 
-      - name: Spustit generování reportu
+      - name: Run report generator
         run: python scripts/generate_report.py
 
-      - name: Commit a push reportů
+      - name: Commit changes
         run: |
-          git config --local user.email "actions@github.com"
-          git config --local user.name "GitHub Actions"
-          git add -A
-          git commit -m "Týdenní report $(date '+%d.%m.%Y')" || echo "No changes to commit"
-          git push || echo "Nothing to push"
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          git add reports/*.md || true
+          git add data/metrics.csv || true
+          git commit -m "Automatický týdenní report" || echo "No changes to commit"
+          git push
