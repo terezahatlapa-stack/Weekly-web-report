@@ -20,7 +20,10 @@ jobs:
 
       - name: Install dependencies
         run: |
-          pip install requests beautifulsoup4 lxml
+          pip install requests
+          pip install beautifulsoup4
+          pip install pandas
+          pip install matplotlib
 
       - name: Run report generator
         run: python scripts/generate_report.py
