@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 # -----------------------------
-# ✦ CONFIG – zde můžeš přidávat URL
+# CONFIG – seznam sledovaných URL
 # -----------------------------
 URLS = [
     "https://www.o2.cz/",
@@ -15,37 +15,41 @@ URLS = [
 ]
 
 # -----------------------------
-# ✦ HELPER FUNCTIONS
+# HELPERS
 # -----------------------------
 def fetch_html(url):
-    """Stáhne HTML obsahu stránky."""
+    """Stáhne HTML stránky."""
     try:
         r = requests.get(url, timeout=20)
-        return r.text, r.elapsed.total_seconds(), len(r.content)
+        return r.text
     except:
-        return "", 0, 0
+        return ""
 
 
-def measure_performance(load_time, size):
-    """Výpočet performance skóre (0–100)."""
-    score = 100
-    if load_time > 1: score -= (load_time - 1) * 15
-    if size > 800000: score -= (size - 800000) / 20000
-    return max(10, min(100, int(score)))
+def fetch_pagespeed(url, strategy):
+    """Stáhne performance z PSI pro mobile/desktop."""
+    api = (
+        "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
+        f"?url={url}&strategy={strategy}"
+    )
+    try:
+        r = requests.get(api, timeout=30).json()
+        score = r["lighthouseResult"]["categories"]["performance"]["score"]
+        return int(score * 100)
+    except:
+        return 0
 
 
 def measure_seo(soup):
-    """SEO metriky: title, description, H1 struktura."""
+    """SEO skóre."""
     score = 100
     issues = []
 
-    title = soup.find("title")
-    if not title:
+    if not soup.find("title"):
         score -= 10
         issues.append("Chybí <title>")
 
-    meta_desc = soup.find("meta", attrs={"name": "description"})
-    if not meta_desc:
+    if not soup.find("meta", attrs={"name": "description"}):
         score -= 10
         issues.append("Chybí meta description")
 
@@ -61,31 +65,29 @@ def measure_seo(soup):
 
 
 def measure_ai_score(soup):
-    """AI/LLM skóre založené na struktuře textu."""
+    """AI/LLM skóre."""
     score = 100
     issues = []
 
     text = soup.get_text(" ", strip=True)
-    word_count = len(text.split())
+    words = len(text.split())
 
-    if word_count < 200:
+    if words < 200:
         score -= 20
-        issues.append("Stránka má málo textu")
-    elif word_count < 500:
+        issues.append("Málo textu")
+    elif words < 500:
         score -= 10
 
-    h2 = soup.find_all("h2")
-    if len(h2) < 2:
+    if len(soup.find_all("h2")) < 2:
         score -= 10
-        issues.append("Málo nadpisů H2")
+        issues.append("Málo H2 nadpisů")
 
     return max(10, score), issues
 
 
 def analyze_images(soup):
-    """Najde obrázky bez altů nebo mimo WEBP."""
+    """Najde obrázky s problémy."""
     problems = []
-
     for img in soup.find_all("img"):
         src = img.get("src") or ""
         alt = img.get("alt")
@@ -96,106 +98,125 @@ def analyze_images(soup):
         if not src.lower().endswith(".webp"):
             problems.append(("Non-WEBP", src, "Obrázek není ve formátu WEBP"))
 
-        if alt is None or alt.strip() == "":
-            problems.append(("Chybí alt", src, "Prázdný nebo chybějící alt"))
+        if not alt or alt.strip() == "":
+            problems.append(("Chybí ALT", src, "Chybějící nebo prázdný ALT"))
 
     return problems
 
-
 # -----------------------------
-# ✦ PŘÍPRAVA SOUBORŮ
+# PŘÍPRAVA SLOŽEK A CSV
 # -----------------------------
 os.makedirs("reports", exist_ok=True)
 os.makedirs("data", exist_ok=True)
 
 csv_path = "data/metrics.csv"
+
 if not os.path.exists(csv_path):
     with open(csv_path, "w", encoding="utf-8") as f:
-        f.write("date,url,performance,seo,ai\n")
+        f.write("date,url,mobile_perf,desktop_perf,seo,ai\n")
 
 today = datetime.now().strftime("%d.%m.%Y")
 report_path = f"reports/report_{today}.md"
 
-rows_for_csv = []
-report_sections = []
+rows = []
+sections = []
 
 # -----------------------------
-# ✦ HLAVNÍ LOGIKA PRO KAŽDOU URL
+# HLAVNÍ LOGIKA ANALÝZY
 # -----------------------------
 for url in URLS:
 
-    html, load_time, size = fetch_html(url)
-    soup = BeautifulSoup(html, "html.parser")
+    # PSI performance
+    mobile_perf = fetch_pagespeed(url, "mobile")
+    desktop_perf = fetch_pagespeed(url, "desktop")
 
-    perf = measure_performance(load_time, size)
+    # HTML analýza
+    html = fetch_html(url)
+    soup = BeautifulSoup(html, "html.parser")
     seo, seo_issues = measure_seo(soup)
     ai, ai_issues = measure_ai_score(soup)
     img_problems = analyze_images(soup)
 
-    rows_for_csv.append([today, url, perf, seo, ai])
+    # Uložení do CSV
+    rows.append([today, url, mobile_perf, desktop_perf, seo, ai])
 
-    # Sekce reportu
-    section = f"## 🔵 {url}\n\n"
-    section += f"### ⭐ Performance: **{perf}**\n"
-    section += f"### ⭐ SEO: **{seo}**\n"
-    section += f"### ⭐ AI/LLM: **{ai}**\n\n"
+    # -----------------------------
+    # SEKCIONÁLNÍ REPORT
+    # -----------------------------
+    s = f"## 🔵 {url}\n\n"
+    s += f"### 📱 Mobile Performance: **{mobile_perf}**\n"
+    s += f"### 🖥 Desktop Performance: **{desktop_perf}**\n"
+    s += f"### 🔍 SEO: **{seo}**\n"
+    s += f"### 🤖 AI/LLM: **{ai}**\n\n"
 
-    # SEO issues
     if seo_issues or ai_issues:
-        section += "### 📊 Zjištěné problémy:\n"
-        for issue in seo_issues:
-            section += f"- SEO: {issue}\n"
-        for issue in ai_issues:
-            section += f"- AI/LLM: {issue}\n"
-        section += "\n"
+        s += "### 🚨 Zjištěné problémy:\n"
+        for i in seo_issues: s += f"- SEO: {i}\n"
+        for i in ai_issues: s += f"- AI: {i}\n"
+        s += "\n"
 
-    # Tabulka obrázků
     if img_problems:
-        section += "### 📉 Problémy s obrázky\n\n"
-        section += "| Typ | URL | Detail |\n"
-        section += "|-----|-----|--------|\n"
+        s += "### 🖼 Problémy s obrázky\n\n"
+        s += "| Typ | URL | Detail |\n|-----|-----|--------|\n"
         for typ, src, detail in img_problems:
-            section += f"| {typ} | {src} | {detail} |\n"
-        section += "\n"
+            s += f"| {typ} | {src} | {detail} |\n"
+        s += "\n"
     else:
-        section += "### ✔ Všechny obrázky v pořádku\n\n"
+        s += "### ✔ Obrázky jsou v pořádku\n\n"
 
-    report_sections.append(section)
+    sections.append(s)
 
 # -----------------------------
-# ✦ GENEROVÁNÍ CSV
+# DOPLNĚNÍ CSV
 # -----------------------------
 with open(csv_path, "a", encoding="utf-8") as f:
-    for row in rows_for_csv:
-        f.write(",".join(map(str, row)) + "\n")
+    for r in rows:
+        f.write(",".join(map(str, r)) + "\n")
 
 # -----------------------------
-# ✦ GRAF – JEDEN S TŘEMI LINKAMI
+# TVORBA GRAFŮ
 # -----------------------------
 df = pd.read_csv(csv_path)
 
-pivot = df.pivot(index="date", columns="url", values=["performance", "seo", "ai"])
-pivot_mean = df.groupby("date")[["performance", "seo", "ai"]].mean()
+# --- Graf 1: Performance ---
+perf = df.groupby("date")[["mobile_perf", "desktop_perf"]].mean()
 
 plt.figure(figsize=(10, 5))
-plt.plot(pivot_mean.index, pivot_mean["performance"], label="Performance")
-plt.plot(pivot_mean.index, pivot_mean["seo"], label="SEO")
-plt.plot(pivot_mean.index, pivot_mean["ai"], label="AI/LLM")
+plt.plot(perf.index, perf["mobile_perf"], label="Mobile")
+plt.plot(perf.index, perf["desktop_perf"], label="Desktop")
+plt.title("Vývoj Performance")
 plt.legend()
-plt.title("Vývoj skóre")
 plt.xticks(rotation=45)
 plt.tight_layout()
-plt.savefig("reports/score_trend.png")
+plt.savefig("reports/performance_trend.png")
+plt.close()
+
+# --- Graf 2: SEO + AI ---
+seo_ai = df.groupby("date")[["seo", "ai"]].mean()
+
+plt.figure(figsize=(10, 5))
+plt.plot(seo_ai.index, seo_ai["seo"], label="SEO")
+plt.plot(seo_ai.index, seo_ai["ai"], label="AI/LLM")
+plt.title("Vývoj SEO a AI/LLM skóre")
+plt.legend()
+plt.xticks(rotation=45)
+plt.tight_layout()
+plt.savefig("reports/seo_ai_trend.png")
 plt.close()
 
 # -----------------------------
-# ✦ VYTVOŘENÍ REPORTU
+# TVORBA REPORTU
 # -----------------------------
 with open(report_path, "w", encoding="utf-8") as f:
     f.write(f"# Týdenní report – {today}\n\n")
-    f.write("## 📈 Dlouhodobý vývoj skóre\n")
-    f.write("![Vývoj skóre](score_trend.png)\n\n")
-    f.writelines(report_sections)
+
+    f.write("## 📈 Vývoj Performance\n")
+    f.write("![Performance](performance_trend.png)\n\n")
+
+    f.write("## 📘 Vývoj SEO + AI/LLM skóre\n")
+    f.write("![SEO AI](seo_ai_trend.png)\n\n")
+
+    f.writelines(sections)
 
 print("Report hotový:", report_path)
 print("CSV aktualizováno:", csv_path)
