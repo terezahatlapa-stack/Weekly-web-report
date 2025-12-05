@@ -176,7 +176,68 @@ with open(csv_path, "a", encoding="utf-8") as f:
 # -----------------------------
 # TVORBA GRAFŮ
 # -----------------------------
-df = pd.read_csv(csv_path)
+# -----------------------------
+# ✦ BEZPEČNÉ NAČTENÍ, ČIŠTĚNÍ A NORMALIZACE CSV
+# -----------------------------
+import csv
+
+def load_and_clean_csv(path):
+    # přečteme surově (abychom viděli i špatné řádky)
+    rows = []
+    with open(path, "r", encoding="utf-8") as f:
+        reader = csv.reader(f)
+        for r in reader:
+            # strip každé položky
+            rows.append([c.strip() for c in r])
+
+    if not rows or len(rows) == 1:
+        # žádná data kromě hlavičky nebo prázdný soubor -> vrátíme prázdný DF se sloupci, které očekáváme
+        expected_cols = ["date","url","mobile_perf","desktop_perf","seo","ai"]
+        return pd.DataFrame(columns=expected_cols)
+
+    header = rows[0]
+    good_rows = []
+    for r in rows[1:]:
+        # přijmeme pouze řádky se stejným počtem polí jako hlavička a bez úplně prázdných (vše prázdné)
+        if len(r) == len(header) and any(cell != "" for cell in r):
+            good_rows.append(r)
+
+    # vytvoříme DF podle hlavičky, pokud je hlavička nečekaná, doplníme chybějící sloupce
+    df = pd.DataFrame(good_rows, columns=header)
+
+    # očistíme duplicity a whitespace
+    df = df.drop_duplicates().reset_index(drop=True)
+
+    # standardizujeme názvy sloupců (malá písmena)
+    df.columns = [c.strip() for c in df.columns]
+
+    # zajistíme očekávané sloupce (pokud chybí, doplníme s nulami)
+    expected = ["date","url","mobile_perf","desktop_perf","seo","ai"]
+    for col in expected:
+        if col not in df.columns:
+            df[col] = 0
+
+    # přetypujeme číselné sloupce na int (chybné hodnoty -> 0)
+    for col in ["mobile_perf","desktop_perf","seo","ai"]:
+        df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0).astype(int)
+
+    # očistíme date sloupec (udržujeme ve formátu DD.MM.YYYY) — odstraníme whitespace
+    df["date"] = df["date"].astype(str).str.strip()
+
+    # přepíšeme CSV (čistá verze) zpět (zachováme pořadí expected sloupců)
+    df_to_write = df[expected]
+    df_to_write.to_csv(path, index=False, encoding="utf-8")
+
+    return df_to_write
+
+# načti a vyčisti CSV
+df = load_and_clean_csv(csv_path)
+
+# pokud je df prázdný (žádná data), vytvoříme prázdné struktury pro grafy
+if df.empty:
+    # vytvoříme prázdné DataFrame se správnými sloupci, aby zbytek kódu nepadl
+    df = pd.DataFrame(columns=["date","url","mobile_perf","desktop_perf","seo","ai"])
+
 
 # --- Graf 1: Performance ---
 perf = df.groupby("date")[["mobile_perf", "desktop_perf"]].mean()
