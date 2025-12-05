@@ -1,7 +1,7 @@
-date,url,performance,seo,ai
-28.11.2025,https://www.o2.cz/,100,100,100
-28.11.2025,https://www.o2.cz/osobni/o2spolu,100,100,100
-28.11.2025,https://www.o2.cz/osobni/oneplay,100,90,100
-01.12.2025,https://www.o2.cz/,97,100,100
-01.12.2025,https://www.o2.cz/osobni/o2spolu,100,100,100
-01.12.2025,https://www.o2.cz/osobni/oneplay,100,90,100
+date,url,mobile_perf,desktop_perf,seo,ai
+28.11.2025,https://www.o2.cz/,0,0,100,100
+28.11.2025,https://www.o2.cz/osobni/o2spolu,0,0,100,100
+28.11.2025,https://www.o2.cz/osobni/oneplay,0,0,90,100
+01.12.2025,https://www.o2.cz/,0,0,100,100
+01.12.2025,https://www.o2.cz/osobni/o2spolu,0,0,100,100
+01.12.2025,https://www.o2.cz/osobni/oneplay,0,0,90,100
