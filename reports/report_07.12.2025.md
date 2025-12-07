@@ -1,10 +1,10 @@
 # Týdenní report – 07.12.2025
 
 ## 📈 Vývoj Performance
-![Performance](reports/performance_trend.png)
+![Performance](../reports/performance_trend.png)
 
 ## 📘 Vývoj SEO + AI/LLM skóre
-![SEO AI](reports/seo_ai_trend.png)
+![SEO AI](../reports/seo_ai_trend.png)
 
 ## 🔵 https://www.o2.cz/
 
