@@ -25,8 +25,24 @@ jobs:
           pip install pandas
           pip install matplotlib
 
-      - name: Run report generator
+      - name: Run Python script
         run: python scripts/generate_report.py
+      - name: Commit report and images
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "GitHub Action"
+
+        git add reports/*.md
+        git add reports/*.png
+        git add data/metrics.csv
+
+        # Pokud není co commitnout, nevyhodí to chybu
+        git commit -m "Weekly report" || echo "No changes to commit"
+
+    - name: Push changes
+      uses: ad-m/github-push-action@v0.8.0
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Commit changes
         run: |
