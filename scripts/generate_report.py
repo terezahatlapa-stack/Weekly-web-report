@@ -293,10 +293,10 @@ with open(report_path, "w", encoding="utf-8") as f:
     f.write(f"# Týdenní report – {today}\n\n")
 
     f.write("## 📈 Vývoj Performance\n")
-    f.write("![Performance](reports/performance_trend.png)\n\n")
+f.write("![Performance](../reports/performance_trend.png)\n\n")
 
-    f.write("## 📘 Vývoj SEO + AI/LLM skóre\n")
-    f.write("![SEO AI](reports/seo_ai_trend.png)\n\n")
+f.write("## 📘 Vývoj SEO + AI/LLM skóre\n")
+f.write("![SEO AI](../reports/seo_ai_trend.png)\n\n")
 
     f.writelines(sections)
 
