@@ -27,16 +27,37 @@ def fetch_html(url):
 
 
 def fetch_pagespeed(url, strategy):
-    """Stáhne performance z PSI pro mobile/desktop."""
-    api = (
-        "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
-        f"?url={url}&strategy={strategy}"
-    )
+    """
+    Získá performance skóre (0-100) z PageSpeed Insights bez API klíče.
+    strategy: "mobile" nebo "desktop"
+    Vrací int (0-100).
+    """
+    base = "https://www.googleapis.com/pagespeedonline/v5/runPagespeed"
+    params = {
+        "url": url,
+        "strategy": strategy,
+        "category": "performance"
+    }
     try:
-        r = requests.get(api, timeout=30).json()
-        score = r["lighthouseResult"]["categories"]["performance"]["score"]
-        return int(score * 100)
-    except:
+        r = requests.get(base, params=params, timeout=30)
+        r.raise_for_status()
+        data = r.json()
+        # cesta v JSONu: lighthouseResult.categories.performance.score (0..1 float)
+        score = data.get("lighthouseResult", {}) \
+                    .get("categories", {}) \
+                    .get("performance", {}) \
+                    .get("score", None)
+        if score is None:
+            print(f"[PSI] No performance score for {url} ({strategy}) - JSON keys missing")
+            return 0
+        # score je float 0..1, převedeme na 0..100 int
+        try:
+            return int(float(score) * 100)
+        except Exception:
+            return 0
+    except Exception as e:
+        # vypiš důvod do logu (uvidíš to v Actions)
+        print(f"[PSI] Error fetching PSI for {url} ({strategy}): {e}")
         return 0
 
 
