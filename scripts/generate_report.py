@@ -260,6 +260,13 @@ if df.empty:
     df = pd.DataFrame(columns=["date","url","mobile_perf","desktop_perf","seo","ai"])
 
 
+# --- Vytvoření složky reports (kdyby nebyla) ---
+os.makedirs("reports", exist_ok=True)
+
+# --- Cesty k obrázkům ---
+perf_img = "reports/performance_trend.png"
+seo_ai_img = "reports/seo_ai_trend.png"
+
 # --- Graf 1: Performance ---
 perf = df.groupby("date")[["mobile_perf", "desktop_perf"]].mean()
 
@@ -270,7 +277,7 @@ plt.title("Vývoj Performance")
 plt.legend()
 plt.xticks(rotation=45)
 plt.tight_layout()
-plt.savefig("reports/performance_trend.png")
+plt.savefig(perf_img)
 plt.close()
 
 # --- Graf 2: SEO + AI ---
@@ -283,8 +290,10 @@ plt.title("Vývoj SEO a AI/LLM skóre")
 plt.legend()
 plt.xticks(rotation=45)
 plt.tight_layout()
-plt.savefig("reports/seo_ai_trend.png")
+plt.savefig(seo_ai_img)
 plt.close()
+
+print("Uloženy grafy:", perf_img, seo_ai_img)
 
 # -----------------------------
 # TVORBA REPORTU
