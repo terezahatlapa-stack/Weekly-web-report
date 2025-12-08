@@ -4,6 +4,7 @@ from bs4 import BeautifulSoup
 from datetime import datetime
 import matplotlib.pyplot as plt
 import pandas as pd
+import json
 
 # -----------------------------
 # CONFIG – seznam sledovaných URL
@@ -36,12 +37,21 @@ def fetch_pagespeed(url, strategy):
     params = {
         "url": url,
         "strategy": strategy,
-        "category": "performance"
+        # požádáme API o více kategorií, aby vrátilo širší výsledky
+        "category": ["performance","seo","accessibility","best-practices"]
     }
     try:
         r = requests.get(base, params=params, timeout=30)
         r.raise_for_status()
         data = r.json()
+        # --- DEBUG: vypiš categories, abychom viděli, co API opravdu vrací ---
+        try:
+            cats = data.get("lighthouseResult", {}).get("categories", {})
+            print("[PSI DEBUG] lighthouseResult.categories:", json.dumps(cats, indent=2, ensure_ascii=False))
+        except Exception as _e:
+            print("[PSI DEBUG] Nelze získat lighthouseResult.categories z JSONu:", _e)
+            print("[PSI DEBUG] Raw response:", json.dumps(data, indent=2, ensure_ascii=False))
+
         # cesta v JSONu: lighthouseResult.categories.performance.score (0..1 float)
         score = data.get("lighthouseResult", {}) \
                     .get("categories", {}) \
